@@ -1,12 +1,15 @@
 # gartic could ban me for this
 
+import urllib.request
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 import undetected_chromedriver as uc
 from selenium import webdriver
 from bs4 import BeautifulSoup
 
+import numpy as np
 import requests
+import urllib
 import math
 import time
 import cv2
@@ -53,7 +56,7 @@ def make_image(prompt) -> str:
     time.sleep(1) # not good...
     return json.loads(response.json())["id"]
 
-def get_image(id):
+def get_image(id) -> cv2.Mat:
     url = "https://api.starryai.com/creations/"
 
     headers = {
@@ -62,8 +65,17 @@ def get_image(id):
     }
 
     # remember to check if image status is "completed" before getting url
-    response = requests.get(url+id, headers=headers)
-    image_url = json.loads(response.json())["images"][0]["url"]
+    # response = requests.get(url+id, headers=headers)
+    # image_url = json.loads(response.json())["images"][0]["url"]
+    image_url = "https://tmp.starryai.com/api/64139/a4d7b214-9ae1-45d0-8bc5-0c6b87c8d0f7.png"
+
+    # request image from attained url and send it back
+    req = urllib.request.Request(image_url)
+    req.add_header("User-Agent", "Mozilla/5.0")
+    request = urllib.request.urlopen(req)
+    img_arr = np.asarray(bytearray(request.read()), dtype=np.uint8)
+    img = cv2.imdecode(img_arr, -1)
+    return img
 
 def main():
     # ignoring errors...
@@ -89,7 +101,8 @@ def main():
                 # find the prompt and make an image from it
                 prompt = prompts[0].get_text()
                 # id = make_image(prompt)
-                # get_image(id)
+                # image = get_image(id)
+                image = get_image("")
 
                 # determine where the gartic canvas is and determine its dimensions
                 canvases = driver.find_elements(By.TAG_NAME, "canvas")
@@ -99,10 +112,10 @@ def main():
 
                 # print(canvas.size)
 
-                # read in image and scale appopriately
-                filename = input("Enter filename: ")
-                image = cv2.imread("images/" + filename)
-                width, height, _ = image.shape
+                # read in image and scale it appopriately
+                # filename = input("Enter filename: ")
+                # image = cv2.imread("images/" + filename)
+                height, width, _ = image.shape
                 if(width > height):
                     height = math.floor(height * size["width"]/width)
                     width = size["width"]
@@ -111,7 +124,7 @@ def main():
                     height = size["height"]
                 
                 # get edges (to be drawn)
-                edge = cv2.Canny(cv2.resize(image, dsize=(width, height)), 50, 150)
+                edge = cv2.Canny(cv2.resize(image, dsize=(width, height)), 100, 100)
 
                 # allow time for player to choose pixel size (will be automated)
                 time.sleep(5)
