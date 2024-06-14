@@ -29,10 +29,7 @@ def draw(driver, canvas, img):
     for i in range(0, height, 3):
         for j in range(0, width, 3):
             if img[i, j] == 255:
-                # print(str(i) + " " + str(j))
-
-                action_chain = ActionChains(driver)
-                action_chain.w3c_actions.pointer_action._duration = 0
+                action_chain = ActionChains(driver, duration=0)
                 action_chain.move_to_element_with_offset(canvas, start_width+j, start_height+i).click().perform()
                 # action_chain.move_to_element(canvas).move_by_offset(start_width+j, start_height+i).click().perform()
 
@@ -69,7 +66,7 @@ def get_image(id):
     image_url = json.loads(response.json())["images"][0]["url"]
 
 def main():
-    # ignoring errors lol!
+    # ignoring errors...
     options = webdriver.ChromeOptions()
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--ignore-ssl-errors')
@@ -89,22 +86,34 @@ def main():
             prompts = soup.find_all("h3") # prompt is always in an h3 tag (i checked)
 
             if len(prompts) > 0:
+                # find the prompt and make an image from it
                 prompt = prompts[0].get_text()
-                id = make_image(prompt)
-                get_image(id)
+                # id = make_image(prompt)
+                # get_image(id)
 
+                # determine where the gartic canvas is and determine its dimensions
                 canvases = driver.find_elements(By.TAG_NAME, "canvas")
                 relevant_canvases = [x for x in canvases if x.size["width"]/x.size["height"] == 758/424]
-
                 canvas = relevant_canvases[-1] # width=1516, height=848
                 size = canvas.size
 
                 # print(canvas.size)
 
-                image = cv2.imread("images/silly.jpg")
-                edge = cv2.Canny(cv2.resize(image, dsize=(math.floor(size["width"]), math.floor(size["height"]))), 50, 150)
+                # read in image and scale appopriately
+                filename = input("Enter filename: ")
+                image = cv2.imread("images/" + filename)
+                width, height, _ = image.shape
+                if(width > height):
+                    height = math.floor(height * size["width"]/width)
+                    width = size["width"]
+                else:
+                    width = math.floor(width * size["height"]/height)
+                    height = size["height"]
+                
+                # get edges (to be drawn)
+                edge = cv2.Canny(cv2.resize(image, dsize=(width, height)), 50, 150)
 
-                # is this slow ???
+                # allow time for player to choose pixel size (will be automated)
                 time.sleep(5)
                 draw(driver, canvas, edge)
 
