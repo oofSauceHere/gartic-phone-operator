@@ -1,11 +1,19 @@
+# gartic could ban me for this
+
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 import undetected_chromedriver as uc
 from selenium import webdriver
 from bs4 import BeautifulSoup
+
+import requests
 import math
 import time
 import cv2
+import json
+
+from dotenv import load_dotenv
+import os
 
 # opencv testing
 # image = cv2.imread("images/silly.jpg")
@@ -28,6 +36,38 @@ def draw(driver, canvas, img):
                 action_chain.move_to_element_with_offset(canvas, start_width+j, start_height+i).click().perform()
                 # action_chain.move_to_element(canvas).move_by_offset(start_width+j, start_height+i).click().perform()
 
+def make_image(prompt) -> str:
+    url = "https://api.starryai.com/creations/"
+
+    payload = {
+        "prompt": prompt,
+        "aspectRatio": "landscape",
+        "images": "1"
+    }
+
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "X-API-Key": os.getenv("API_KEY")
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+
+    time.sleep(1) # not good...
+    return json.loads(response.json())["id"]
+
+def get_image(id):
+    url = "https://api.starryai.com/creations/"
+
+    headers = {
+        "accept": "application/json",
+        "X-API-Key": os.getenv("API_KEY")
+    }
+
+    # remember to check if image status is "completed" before getting url
+    response = requests.get(url+id, headers=headers)
+    image_url = json.loads(response.json())["images"][0]["url"]
+
 def main():
     # ignoring errors lol!
     options = webdriver.ChromeOptions()
@@ -49,7 +89,9 @@ def main():
             prompts = soup.find_all("h3") # prompt is always in an h3 tag (i checked)
 
             if len(prompts) > 0:
-                print(prompts[0].get_text())
+                prompt = prompts[0].get_text()
+                id = make_image(prompt)
+                get_image(id)
 
                 canvases = driver.find_elements(By.TAG_NAME, "canvas")
                 relevant_canvases = [x for x in canvases if x.size["width"]/x.size["height"] == 758/424]
@@ -70,8 +112,9 @@ def main():
             while driver.current_url == current_url:
                 time.sleep(0.1)
 
-    # listen for keypress
+    # listen for keypress (not done yet)
     driver.quit()
 
 if __name__ == "__main__":
+    load_dotenv() # so we can access api key
     main()
