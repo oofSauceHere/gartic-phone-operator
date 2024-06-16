@@ -54,7 +54,7 @@ def make_image(prompt) -> str:
     response = requests.post(url, json=payload, headers=headers)
 
     time.sleep(1) # not good...
-    return json.loads(response.json())["id"]
+    return json.loads(response.content)["id"]
 
 def get_image(id) -> cv2.Mat:
     url = "https://api.starryai.com/creations/"
@@ -65,13 +65,23 @@ def get_image(id) -> cv2.Mat:
     }
 
     # remember to check if image status is "completed" before getting url
-    # response = requests.get(url+id, headers=headers)
-    # image_url = json.loads(response.json())["images"][0]["url"]
-    image_url = "https://tmp.starryai.com/api/64139/a4d7b214-9ae1-45d0-8bc5-0c6b87c8d0f7.png"
+    response = requests.get(url+str(id), headers=headers)
+    status = json.loads(response.content)["status"]
+
+    # waiting for image to complete (try not to request too many times...)
+    while(status != "completed"):
+        print("waiting...")
+        time.sleep(1)
+        response = requests.get(url+str(id), headers=headers)
+        status = json.loads(response.content)["status"]
+
+    # the image is done so we can Have it
+    image_url = json.loads(response.content)["images"][0]["url"]
+    # image_url = "https://tmp.starryai.com/api/64139/a4d7b214-9ae1-45d0-8bc5-0c6b87c8d0f7.png"
 
     # request image from attained url and send it back
     req = urllib.request.Request(image_url)
-    req.add_header("User-Agent", "Mozilla/5.0")
+    req.add_header("User-Agent", "Mozilla/5.0") # otherwise we get 403
     request = urllib.request.urlopen(req)
     img_arr = np.asarray(bytearray(request.read()), dtype=np.uint8)
     img = cv2.imdecode(img_arr, -1)
@@ -100,16 +110,17 @@ def main():
             if len(prompts) > 0:
                 # find the prompt and make an image from it
                 prompt = prompts[0].get_text()
-                # id = make_image(prompt)
-                # image = get_image(id)
-                image = get_image("")
+                id = make_image(prompt)
+                image = get_image(id)
+                # image = get_image("")
 
                 # determine where the gartic canvas is and determine its dimensions
                 canvases = driver.find_elements(By.TAG_NAME, "canvas")
-                relevant_canvases = [x for x in canvases if x.size["width"]/x.size["height"] == 758/424]
-                canvas = relevant_canvases[-1] # width=1516, height=848
+                relevant_canvases = [x for x in canvases if x.size["width"]/x.size["height"] == 758/424] # this ratio stays consistent
+                canvas = relevant_canvases[-1]
                 size = canvas.size
 
+                # debugging
                 # print(canvas.size)
 
                 # read in image and scale it appopriately
@@ -127,7 +138,6 @@ def main():
                 edge = cv2.Canny(cv2.resize(image, dsize=(width, height)), 100, 100)
 
                 # allow time for player to choose pixel size (will be automated)
-                time.sleep(5)
                 draw(driver, canvas, edge)
 
             # so we dont repeat the drawing
