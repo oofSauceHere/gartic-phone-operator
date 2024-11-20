@@ -1,6 +1,6 @@
 # gartic-phone-operator
 
-Program that takes a Gartic phone prompt, converts it into an image using StarryAI's API, and draws the image pixel-by-pixel in the Gartic canvas. Created with BeautifulSoup, Selenium, and OpenCV.
+Program that takes a Gartic phone prompt, converts it into an image using StarryAI's API, applies edge detection, and draws the image pixel-by-pixel in the Gartic canvas. Created with BeautifulSoup, Selenium, and OpenCV.
 
 ---
 
